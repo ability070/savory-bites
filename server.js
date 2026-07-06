@@ -3,75 +3,183 @@ const fs = require('fs');
 const path = require('path');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = 3000;
 
-// Middleware to parse JSON data sent from the frontend
-app.use(express.json());
+// Middleware to parse JSON (increased limit for Base64 images)
+app.use(express.json({ limit: '10mb' }));
 
-// Serve the frontend HTML file when you visit the homepage
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
+// --- SIMPLE JSON DATABASE ---
+const DB_FILE = path.join(__dirname, 'db.json');
+
+function getDB() {
+    if (!fs.existsSync(DB_FILE)) {
+        const defaultData = {
+            meals: [],
+            categories: ['Starters','Mains','Desserts','Drinks'],
+            orders: []
+        };
+        fs.writeFileSync(DB_FILE, JSON.stringify(defaultData, null, 2));
+        return defaultData;
+    }
+    return JSON.parse(fs.readFileSync(DB_FILE, 'utf-8'));
+}
+
+function saveDB(data) {
+    try {
+        fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2));
+        return true;
+    } catch (error) {
+        console.error('❌ Failed to write to db.json:', error.message);
+        return false;
+    }
+}
+
+// ================= HTML ROUTES =================
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
+app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'admin.html')));
+
+// ================= MEALS API =================
+app.get('/api/meals', (req, res) => res.json(getDB().meals));
+
+app.post('/api/meals', (req, res) => {
+    const db = getDB();
+    const newMeal = { ...req.body, id: Date.now() };
+    db.meals.push(newMeal);
+    if (saveDB(db)) {
+        console.log(`✅ Added meal: ${newMeal.name}`);
+        res.status(201).json(newMeal);
+    } else {
+        res.status(500).json({ error: 'Failed to save meal' });
+    }
 });
 
-// Serve the admin HTML file
-app.get('/admin', (req, res) => {
-  res.sendFile(path.join(__dirname, 'admin.html'));
+app.put('/api/meals/:id', (req, res) => {
+    const db = getDB();
+    const id = req.params.id;
+    const index = db.meals.findIndex(m => String(m.id) === String(id));
+    if (index !== -1) {
+        db.meals[index] = { ...db.meals[index], ...req.body };
+        if (saveDB(db)) {
+            console.log(`✅ Updated meal: ${db.meals[index].name}`);
+            res.json(db.meals[index]);
+        } else {
+            res.status(500).json({ error: 'Failed to update meal' });
+        }
+    } else { 
+        res.status(404).json({ error: 'Not found' }); 
+    }
 });
 
-// API: Get all meals
-app.get('/api/meals', (req, res) => {
-  const mealsData = fs.readFileSync(path.join(__dirname, 'meals.json'), 'utf8');
-  res.json(JSON.parse(mealsData));
+app.delete('/api/meals/:id', (req, res) => {
+    const db = getDB();
+    const id = req.params.id;
+    db.meals = db.meals.filter(m => String(m.id) !== String(id));
+    if (saveDB(db)) {
+        console.log(`✅ Deleted meal ID: ${id}`);
+        res.json({ success: true });
+    } else {
+        res.status(500).json({ error: 'Failed to delete meal' });
+    }
 });
 
-// API: Create a new order
-app.post('/api/orders', (req, res) => {
-  const orderData = req.body;
-  
-  // Generate a unique Order ID (e.g., SB12345678)
-  const orderId = 'SB' + Date.now().toString().slice(-8);
-  const newOrder = {
-    id: orderId,
-    ...orderData,
-    time: new Date().toISOString(),
-    status: 'Order Received'
-  };
-
-  // Read existing orders from the file
-  const ordersPath = path.join(__dirname, 'orders.json');
-  let orders = [];
-  if (fs.existsSync(ordersPath)) {
-    orders = JSON.parse(fs.readFileSync(ordersPath, 'utf8'));
-  }
-
-  // Add the new order and save it back to the file
-  orders.push(newOrder);
-  fs.writeFileSync(ordersPath, JSON.stringify(orders, null, 2));
-
-  // Send success response back to frontend
-  res.status(201).json({ success: true, orderId: orderId });
+// ================= CATEGORIES API =================
+app.get('/api/categories', (req, res) => {
+    console.log('📋 GET /api/categories called');
+    res.json(getDB().categories);
 });
 
-// API: Track an order by ID
+app.post('/api/categories', (req, res) => {
+    console.log('➕ POST /api/categories called with:', req.body);
+    
+    const db = getDB();
+    const newName = req.body.name;
+    
+    if (!newName) {
+        console.log('❌ No category name provided');
+        return res.status(400).json({ error: 'Category name is required' });
+    }
+    
+    if (db.categories.includes(newName)) {
+        console.log(`⚠️ Category "${newName}" already exists`);
+        return res.status(400).json({ error: 'Category already exists' });
+    }
+    
+    db.categories.push(newName);
+    
+    if (saveDB(db)) {
+        console.log(`✅ Successfully added category: "${newName}"`);
+        res.json(db.categories);
+    } else {
+        console.log('❌ Failed to save category to db.json');
+        res.status(500).json({ error: 'Failed to save category' });
+    }
+});
+
+app.delete('/api/categories/:name', (req, res) => {
+    const db = getDB();
+    const name = req.params.name;
+    db.categories = db.categories.filter(c => c !== name);
+    if (saveDB(db)) {
+        console.log(`✅ Deleted category: "${name}"`);
+        res.json({ success: true });
+    } else {
+        res.status(500).json({ error: 'Failed to delete category' });
+    }
+});
+
+// ================= ORDERS API =================
+app.get('/api/orders', (req, res) => res.json(getDB().orders));
+
 app.get('/api/orders/:id', (req, res) => {
-  const orderId = req.params.id.toUpperCase();
-  const ordersPath = path.join(__dirname, 'orders.json');
-  
-  if (!fs.existsSync(ordersPath)) {
-    return res.status(404).json({ message: 'Order not found' });
-  }
-
-  const orders = JSON.parse(fs.readFileSync(ordersPath, 'utf8'));
-  const order = orders.find(o => o.id === orderId);
-
-  if (order) {
-    res.json({ order });
-  } else {
-    res.status(404).json({ message: 'Order not found' });
-  }
+    const db = getDB();
+    const order = db.orders.find(o => String(o.id) === String(req.params.id));
+    if (order) res.json({ order });
+    else res.status(404).json({ error: 'Not found' });
 });
 
-// Start the server
-app.listen(PORT, () => {
-  console.log(`✅ Server is running! Open your browser to: http://localhost:${PORT}`);
+app.post('/api/orders', (req, res) => {
+    const db = getDB();
+    const newOrder = { 
+        ...req.body, 
+        id: 'SB' + Date.now(), 
+        status: 'Order Received', 
+        time: new Date().toISOString() 
+    };
+    db.orders.push(newOrder);
+    if (saveDB(db)) {
+        console.log(`✅ New order placed: ${newOrder.id}`);
+        res.status(201).json({ success: true, orderId: newOrder.id });
+    } else {
+        res.status(500).json({ error: 'Failed to save order' });
+    }
 });
+
+app.put('/api/orders/:id', (req, res) => {
+    const db = getDB();
+    const index = db.orders.findIndex(o => String(o.id) === String(req.params.id));
+    if (index !== -1) {
+        db.orders[index] = { ...db.orders[index], ...req.body };
+        if (saveDB(db)) {
+            console.log(`✅ Updated order ${req.params.id} to: ${req.body.status}`);
+            res.json(db.orders[index]);
+        } else {
+            res.status(500).json({ error: 'Failed to update order' });
+        }
+    } else { 
+        res.status(404).json({ error: 'Not found' }); 
+    }
+});
+
+app.delete('/api/orders/:id', (req, res) => {
+    const db = getDB();
+    db.orders = db.orders.filter(o => String(o.id) !== String(req.params.id));
+    if (saveDB(db)) {
+        console.log(`✅ Deleted order: ${req.params.id}`);
+        res.json({ success: true });
+    } else {
+        res.status(500).json({ error: 'Failed to delete order' });
+    }
+});
+
+// ================= START SERVER =================
+app.listen(PORT, () => console.log(`🚀 Server running at http://localhost:${PORT}`));

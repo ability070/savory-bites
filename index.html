@@ -389,15 +389,18 @@ let orderType = null;
 /* ============ LOAD MEALS FROM BACKEND ============ */
 async function loadMeals() {
   try {
-    const response = await fetch('/api/meals');
+    // Added { cache: 'no-store' } to force the browser to always ask the server for fresh data
+    const response = await fetch('/api/meals', { cache: 'no-store' });
     meals = await response.json();
+    
+    // Ensure meals is actually an array (in case the server returns something weird)
+    if (!Array.isArray(meals)) {
+        meals = [];
+    }
   } catch (error) {
     console.error('Failed to load meals from backend.', error);
-    // Fallback data just in case the server is down
-    meals = [
-      {id:1,name:"Classic Burger",desc:"Juicy beef patty.",price:9.99,cat:"Mains",emoji:"🍔",img:""},
-      {id:2,name:"Margherita Pizza",desc:"Fresh mozzarella.",price:12.50,cat:"Mains",emoji:"🍕",img:""}
-    ];
+    // FIXED: Removed the hardcoded 2 meals. Now it will just be empty if the server fails.
+    meals = []; 
   }
   renderFilters();
   renderMenu();

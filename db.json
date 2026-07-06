@@ -1,0 +1,10 @@
+{
+  "meals": [],
+  "categories": [
+    "Starters",
+    "Mains",
+    "Desserts",
+    "Drinks"
+  ],
+  "orders": []
+}

@@ -201,13 +201,12 @@
       </div>
     </section>
 
-    <!-- ADD / EDIT -->
+    <!-- ADD MEAL -->
     <section id="panel-add" style="display:none">
       <div class="panel">
         <div class="panel-header"><h2 id="formTitle">Add New Meal</h2></div>
         <div class="panel-body">
           <form id="mealForm" onsubmit="saveMeal(event)">
-            <input type="hidden" id="mealId"/>
             <div class="form-grid">
               <div class="form-group">
                 <label>Meal Name *</label>
@@ -291,7 +290,7 @@
 
 <script>
 /* ============ CONFIG ============ */
-const ADMIN_PASSWORD = 'admin123'; // Change this!
+const ADMIN_PASSWORD = 'admin123';
 
 /* ============ STATE ============ */
 let meals = [];
@@ -342,13 +341,17 @@ function showPanel(name, link){
   document.getElementById('panel-'+name).style.display='block';
   document.querySelectorAll('.sidebar nav a').forEach(a=>a.classList.remove('active'));
   if(link) link.classList.add('active');
-  const titles = {dashboard:'Dashboard', orders:'Order Tracking', add:'Add / Edit Meal', menu:'Menu Items', categories:'Categories'};
+  const titles = {dashboard:'Dashboard', orders:'Order Tracking', add:'Add New Meal', menu:'Menu Items', categories:'Categories'};
   document.getElementById('pageTitle').textContent = titles[name];
+  
   if(name==='dashboard') renderDashboard();
   if(name==='menu') renderMenuTable();
-  if(name==='categories') renderCategories();
-  if(name==='add') populateCatSelect();
   if(name==='orders') renderOrders();
+  if(name==='categories') renderCategories();
+  if(name==='add') {
+      populateCatSelect();
+      document.getElementById('formTitle').textContent = 'Add New Meal';
+  }
 }
 
 /* ============ ORDERS MANAGEMENT ============ */
@@ -413,7 +416,7 @@ async function updateOrderStatus(orderId, newStatus) {
         body: JSON.stringify({ status: newStatus })
     });
     toast(`Order ${orderId} updated to ${newStatus}`);
-    renderOrders(); // Refresh the table
+    renderOrders();
 }
 
 async function deleteOrder(orderId) {
@@ -441,11 +444,12 @@ function renderDashboard(){
     </tr>`).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--gray)">No items yet</td></tr>';
 }
 
-/* ============ FORM ============ */
+/* ============ ADD MEAL FORM ============ */
 function populateCatSelect(){
   const sel = document.getElementById('mealCat');
   sel.innerHTML = '<option value="">Select category</option>' + categories.map(c=>`<option value="${c}">${c}</option>`).join('');
 }
+
 function handleImage(e){
   const file = e.target.files[0];
   if(!file) return;
@@ -460,7 +464,6 @@ function handleImage(e){
 
 async function saveMeal(e){
   e.preventDefault();
-  const id = document.getElementById('mealId').value;
   const data = {
     name: document.getElementById('mealName').value.trim(),
     cat: document.getElementById('mealCat').value,
@@ -470,58 +473,26 @@ async function saveMeal(e){
     img: currentImg
   };
 
-  if(id){
-    await fetch(`/api/meals/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-    });
-    toast('Meal updated!');
-  } else {
-    await fetch('/api/meals', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-    });
-    toast('Meal added!');
-  }
+  const response = await fetch('/api/meals', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+  });
   
-  await loadMeals(); // Refresh local data from backend
-  resetForm();
-  showPanel('menu', document.querySelector('nav a:nth-child(4)'));
+  if(response.ok) {
+      toast('Meal added successfully!');
+      await loadMeals();
+      resetForm();
+      showPanel('menu', document.querySelector('nav a:nth-child(4)'));
+  } else {
+      toast('Failed to add meal', 'error');
+  }
 }
 
 function resetForm(){
   document.getElementById('mealForm').reset();
-  document.getElementById('mealId').value='';
   currentImg='';
   document.getElementById('imgPlaceholder').innerHTML = '<span class="icon">📷</span>Click to upload image (JPG, PNG)';
-  document.getElementById('formTitle').textContent='Add New Meal';
-}
-
-function editMeal(id){
-  const m = meals.find(x=>x.id===id);
-  if(!m) return;
-  showPanel('add', document.querySelector('nav a:nth-child(3)'));
-  document.getElementById('formTitle').textContent='Edit Meal';
-  document.getElementById('mealId').value = m.id;
-  document.getElementById('mealName').value = m.name;
-  document.getElementById('mealCat').value = m.cat;
-  document.getElementById('mealPrice').value = m.price;
-  document.getElementById('mealDesc').value = m.desc;
-  document.getElementById('mealEmoji').value = m.emoji || '';
-  currentImg = m.img || '';
-  if(currentImg){
-    document.getElementById('imgPlaceholder').innerHTML = `<img src="${currentImg}"/><p style="margin-top:.5rem;font-size:.8rem">Click to change</p>`;
-  }
-}
-
-async function deleteMeal(id){
-  if(!confirm('Delete this meal?')) return;
-  await fetch(`/api/meals/${id}`, { method: 'DELETE' });
-  await loadMeals();
-  renderMenuTable();
-  toast('Meal deleted');
 }
 
 /* ============ MENU TABLE ============ */
@@ -546,13 +517,26 @@ function renderMenuTable(){
       <td style="max-width:200px;color:var(--gray);font-size:.9rem">${m.desc}</td>
       <td><strong>$${m.price.toFixed(2)}</strong></td>
       <td><div class="actions">
-        <button class="btn btn-secondary btn-sm" onclick="editMeal(${m.id})">✏️ Edit</button>
         <button class="btn btn-danger btn-sm" onclick="deleteMeal(${m.id})">🗑️ Delete</button>
       </div></td>
     </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--gray);padding:2rem">No meals found</td></tr>';
 }
 
-/* ============ CATEGORIES ============ */
+async function deleteMeal(id){
+  if(!confirm('Delete this meal?')) return;
+  const response = await fetch(`/api/meals/${id}`, { method: 'DELETE' });
+  
+  if(response.ok) {
+      await loadMeals();
+      renderMenuTable();
+      renderDashboard();
+      toast('Meal deleted');
+  } else {
+      toast('Failed to delete meal', 'error');
+  }
+}
+
+/* ============ CATEGORIES MANAGEMENT ============ */
 function renderCategories(){
   document.getElementById('catList').innerHTML = categories.map(c=>{
     const count = meals.filter(m=>m.cat===c).length;
@@ -566,18 +550,37 @@ function renderCategories(){
 async function addCategory(){
   const input = document.getElementById('newCat');
   const name = input.value.trim();
-  if(!name) return;
-  if(categories.includes(name)){ toast('Category exists','error'); return; }
   
-  await fetch('/api/categories', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name })
-  });
+  if(!name) { 
+      toast('Please enter a category name', 'error'); 
+      return; 
+  }
+  if(categories.includes(name)){ 
+      toast('Category already exists','error'); 
+      return; 
+  }
+  
+  try {
+      const response = await fetch('/api/categories', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: name })
+      });
+      
+      // If the server returns an error (like 404 Not Found), this will catch it
+      if (!response.ok) {
+          throw new Error('Server responded with status ' + response.status);
+      }
+  } catch (error) {
+      console.error('Failed to add category:', error);
+      toast('Error: Server refused to add category. Check terminal!', 'error');
+      return; // Stop the function so it doesn't falsely say "Category added!"
+  }
   
   await loadCategories();
   input.value='';
   renderCategories();
+  populateCatSelect(); 
   toast('Category added!');
 }
 
@@ -592,6 +595,7 @@ async function deleteCategory(name){
   await fetch(`/api/categories/${encodeURIComponent(name)}`, { method: 'DELETE' });
   await loadCategories();
   renderCategories();
+  populateCatSelect(); // Update the dropdown in Add Meal form
   toast('Category deleted');
 }
 
@@ -605,7 +609,6 @@ function toast(msg, type='success'){
 
 function refreshAll(){
   renderDashboard();
-  populateCatSelect();
 }
 </script>
 </body>
