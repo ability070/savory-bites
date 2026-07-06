@@ -13,6 +13,11 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
+// Serve the admin HTML file
+app.get('/admin', (req, res) => {
+  res.sendFile(path.join(__dirname, 'admin.html'));
+});
+
 // API: Get all meals
 app.get('/api/meals', (req, res) => {
   const mealsData = fs.readFileSync(path.join(__dirname, 'meals.json'), 'utf8');
