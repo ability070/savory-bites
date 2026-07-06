@@ -1,0 +1,14 @@
+[
+  {"id":1,"name":"Classic Burger","desc":"Juicy beef patty with cheese, lettuce & tomato.","price":9.99,"cat":"Mains","emoji":"🍔","img":""},
+  {"id":2,"name":"Margherita Pizza","desc":"Fresh mozzarella, basil & tomato sauce.","price":12.50,"cat":"Mains","emoji":"🍕","img":""},
+  {"id":3,"name":"Caesar Salad","desc":"Crisp romaine, parmesan & croutons.","price":7.99,"cat":"Starters","emoji":"🥗","img":""},
+  {"id":4,"name":"Grilled Salmon","desc":"Atlantic salmon with lemon butter sauce.","price":16.99,"cat":"Mains","emoji":"🐟","img":""},
+  {"id":5,"name":"Chicken Wings","desc":"Spicy buffalo wings with ranch dip.","price":10.50,"cat":"Starters","emoji":"🍗","img":""},
+  {"id":6,"name":"Pasta Carbonara","desc":"Creamy pasta with bacon & parmesan.","price":13.99,"cat":"Mains","emoji":"🍝","img":""},
+  {"id":7,"name":"Chocolate Cake","desc":"Rich dark chocolate with ganache.","price":6.50,"cat":"Desserts","emoji":"🍰","img":""},
+  {"id":8,"name":"Ice Cream Sundae","desc":"Vanilla ice cream with toppings.","price":5.99,"cat":"Desserts","emoji":"🍨","img":""},
+  {"id":9,"name":"Fresh Lemonade","desc":"Hand-squeezed with mint leaves.","price":3.99,"cat":"Drinks","emoji":"🍋","img":""},
+  {"id":10,"name":"Cappuccino","desc":"Italian-style espresso with foam.","price":4.50,"cat":"Drinks","emoji":"☕","img":""},
+  {"id":11,"name":"Garlic Bread","desc":"Toasted with garlic butter & herbs.","price":4.99,"cat":"Starters","emoji":"🥖","img":""},
+  {"id":12,"name":"Tiramisu","desc":"Classic Italian coffee dessert.","price":7.50,"cat":"Desserts","emoji":"🍮","img":""}
+]

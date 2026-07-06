@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Admin Dashboard — Savory Bites</title>
+<style>
+  :root{
+    --primary:#e85d04;
+    --primary-dark:#c94a03;
+    --dark:#1a1a1a;
+    --gray:#6b6b6b;
+    --light:#f7f7f9;
+    --card:#ffffff;
+    --success:#2e7d32;
+    --danger:#d32f2f;
+    --warning:#ed6c02;
+    --border:#e0e0e0;
+    --shadow:0 4px 12px rgba(0,0,0,.06);
+    --radius:10px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--light);color:var(--dark);line-height:1.5}
+
+  /* LOGIN */
+  .login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1rem;background:linear-gradient(135deg,#fff3e0,#ffe0b2)}
+  .login-box{background:#fff;padding:2.5rem;border-radius:var(--radius);box-shadow:var(--shadow);width:100%;max-width:380px;text-align:center}
+  .login-box h1{color:var(--primary);margin-bottom:.3rem}
+  .login-box p{color:var(--gray);margin-bottom:1.5rem;font-size:.9rem}
+  .login-box input{width:100%;padding:.8rem;border:1px solid var(--border);border-radius:8px;margin-bottom:1rem;font-size:1rem}
+  .login-box button{width:100%;background:var(--primary);color:#fff;border:none;padding:.9rem;border-radius:8px;font-size:1rem;font-weight:600;cursor:pointer}
+  .login-box button:hover{background:var(--primary-dark)}
+  .login-error{color:var(--danger);font-size:.85rem;margin-bottom:1rem;display:none}
+
+  /* LAYOUT */
+  .app{display:none}
+  .sidebar{position:fixed;left:0;top:0;width:240px;height:100vh;background:var(--dark);color:#fff;padding:1.5rem 0;overflow-y:auto}
+  .sidebar .logo{padding:0 1.5rem 1.5rem;font-size:1.4rem;font-weight:800;border-bottom:1px solid rgba(255,255,255,.1)}
+  .sidebar .logo span{color:var(--primary)}
+  .sidebar nav{margin-top:1rem}
+  .sidebar nav a{display:flex;align-items:center;gap:.8rem;padding:.9rem 1.5rem;color:#ccc;text-decoration:none;transition:all .2s;border-left:3px solid transparent}
+  .sidebar nav a:hover,.sidebar nav a.active{background:rgba(255,255,255,.05);color:#fff;border-left-color:var(--primary)}
+  .logout-btn{margin-top:2rem;padding:.7rem 1.5rem;background:rgba(255,255,255,.1);color:#fff;border:none;width:calc(100% - 3rem);margin-left:1.5rem;width:calc(100% - 3rem);border-radius:6px;cursor:pointer}
+  .logout-btn:hover{background:var(--danger)}
+
+  .main{margin-left:240px;padding:2rem}
+  .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:2rem}
+  .topbar h1{font-size:1.6rem}
+  .topbar .user{display:flex;align-items:center;gap:.6rem;color:var(--gray)}
+
+  /* STATS */
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin-bottom:2rem}
+  .stat-card{background:var(--card);padding:1.3rem;border-radius:var(--radius);box-shadow:var(--shadow)}
+  .stat-card .label{color:var(--gray);font-size:.85rem;margin-bottom:.3rem}
+  .stat-card .value{font-size:1.8rem;font-weight:700;color:var(--primary)}
+  .stat-card .icon{float:right;font-size:2rem;opacity:.3}
+
+  /* PANELS */
+  .panel{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:1.5rem;overflow:hidden}
+  .panel-header{padding:1.2rem 1.5rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+  .panel-header h2{font-size:1.2rem}
+  .panel-body{padding:1.5rem}
+
+  /* FORM */
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+  .form-group{margin-bottom:1rem}
+  .form-group.full{grid-column:1/-1}
+  .form-group label{display:block;margin-bottom:.4rem;font-weight:600;font-size:.9rem}
+  .form-group input,.form-group textarea,.form-group select{width:100%;padding:.7rem;border:1px solid var(--border);border-radius:8px;font-size:.95rem;font-family:inherit}
+  .form-group input:focus,.form-group textarea:focus,.form-group select:focus{outline:none;border-color:var(--primary)}
+
+  .img-upload{border:2px dashed var(--border);border-radius:8px;padding:1.5rem;text-align:center;cursor:pointer;transition:all .2s;background:#fafafa}
+  .img-upload:hover{border-color:var(--primary);background:#fff3e0}
+  .img-upload img{max-width:150px;max-height:150px;border-radius:8px;margin:0 auto;display:block}
+  .img-upload .placeholder{color:var(--gray);font-size:.9rem}
+  .img-upload .placeholder .icon{font-size:2.5rem;display:block;margin-bottom:.5rem}
+
+  .btn{padding:.7rem 1.3rem;border:none;border-radius:8px;font-weight:600;cursor:pointer;font-size:.95rem;transition:all .2s}
+  .btn-primary{background:var(--primary);color:#fff}
+  .btn-primary:hover{background:var(--primary-dark)}
+  .btn-secondary{background:#eee;color:var(--dark)}
+  .btn-danger{background:var(--danger);color:#fff}
+  .btn-sm{padding:.4rem .8rem;font-size:.85rem}
+
+  /* TABLE */
+  .table-wrap{overflow-x:auto}
+  table{width:100%;border-collapse:collapse}
+  th,td{padding:.9rem 1rem;text-align:left;border-bottom:1px solid var(--border)}
+  th{background:#fafafa;font-weight:600;font-size:.85rem;color:var(--gray);text-transform:uppercase;letter-spacing:.5px}
+  tr:hover{background:#fafafa}
+  .item-img{width:50px;height:50px;border-radius:8px;object-fit:cover;background:#f0f0f0;display:flex;align-items:center;justify-content:center;font-size:1.8rem}
+  .actions{display:flex;gap:.5rem}
+  .badge{display:inline-block;padding:.2rem .6rem;border-radius:12px;font-size:.75rem;font-weight:600;background:#f0f0f0}
+
+  /* STATUS SELECT */
+  .status-select {
+    padding: .4rem;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    font-weight: 600;
+    font-size: .85rem;
+    cursor: pointer;
+    outline: none;
+    color: #fff;
+  }
+
+  /* TOAST */
+  .toast{position:fixed;bottom:2rem;right:2rem;background:var(--success);color:#fff;padding:1rem 1.5rem;border-radius:8px;box-shadow:var(--shadow);transform:translateX(400px);transition:transform .3s;z-index:1000}
+  .toast.show{transform:translateX(0)}
+  .toast.error{background:var(--danger)}
+
+  /* SEARCH */
+  .search-bar{display:flex;gap:.5rem;margin-bottom:1rem}
+  .search-bar input{flex:1;padding:.7rem;border:1px solid var(--border);border-radius:8px}
+
+  @media(max-width:768px){
+    .sidebar{width:60px}
+    .sidebar .logo,.sidebar nav a span,.logout-btn{display:none}
+    .sidebar nav a{justify-content:center}
+    .main{margin-left:60px;padding:1rem}
+    .form-grid{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-wrap" id="loginWrap">
+  <div class="login-box">
+    <h1>🔐 Admin Login</h1>
+    <p>Enter password to manage your menu</p>
+    <div class="login-error" id="loginError">Incorrect password</div>
+    <input type="password" id="loginPass" placeholder="Password" onkeydown="if(event.key==='Enter')doLogin()"/>
+    <button onclick="doLogin()">Sign In</button>
+    <p style="margin-top:1rem;font-size:.8rem;color:var(--gray)">Default password: <code>admin123</code></p>
+  </div>
+</div>
+
+<!-- APP -->
+<div class="app" id="app">
+  <aside class="sidebar">
+    <div class="logo">Savory<span>Bites</span></div>
+    <nav>
+      <a href="#" class="active" onclick="showPanel('dashboard',this)"><span>📊</span><span>Dashboard</span></a>
+      <a href="#" onclick="showPanel('orders',this)"><span>📦</span><span>Orders</span></a>
+      <a href="#" onclick="showPanel('add',this)"><span>➕</span><span>Add Meal</span></a>
+      <a href="#" onclick="showPanel('menu',this)"><span>🍽️</span><span>Menu Items</span></a>
+      <a href="#" onclick="showPanel('categories',this)"><span>🏷️</span><span>Categories</span></a>
+    </nav>
+    <button class="logout-btn" onclick="logout()">🚪 Logout</button>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <h1 id="pageTitle">Dashboard</h1>
+      <div class="user">👤 Administrator</div>
+    </div>
+
+    <!-- DASHBOARD -->
+    <section id="panel-dashboard">
+      <div class="stats">
+        <div class="stat-card"><div class="icon">🍽️</div><div class="label">Total Meals</div><div class="value" id="statTotal">0</div></div>
+        <div class="stat-card"><div class="icon">🏷️</div><div class="label">Categories</div><div class="value" id="statCats">0</div></div>
+        <div class="stat-card"><div class="icon">💰</div><div class="label">Avg. Price</div><div class="value" id="statAvg">$0</div></div>
+        <div class="stat-card"><div class="icon">⭐</div><div class="label">Most Expensive</div><div class="value" id="statMax">$0</div></div>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><h2>Recent Items</h2></div>
+        <div class="panel-body table-wrap">
+          <table><thead><tr><th>Image</th><th>Name</th><th>Category</th><th>Price</th></tr></thead>
+          <tbody id="recentTable"></tbody></table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ORDERS -->
+    <section id="panel-orders" style="display:none">
+      <div class="panel">
+        <div class="panel-header">
+          <h2>Order Tracking & Management</h2>
+          <button class="btn btn-secondary btn-sm" onclick="renderOrders()">🔄 Refresh</button>
+        </div>
+        <div class="panel-body">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Tracking ID</th>
+                  <th>Customer</th>
+                  <th>Items</th>
+                  <th>Type</th>
+                  <th>Total</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="ordersTable"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ADD / EDIT -->
+    <section id="panel-add" style="display:none">
+      <div class="panel">
+        <div class="panel-header"><h2 id="formTitle">Add New Meal</h2></div>
+        <div class="panel-body">
+          <form id="mealForm" onsubmit="saveMeal(event)">
+            <input type="hidden" id="mealId"/>
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Meal Name *</label>
+                <input type="text" id="mealName" required placeholder="e.g. Spicy Tacos"/>
+              </div>
+              <div class="form-group">
+                <label>Category *</label>
+                <select id="mealCat" required></select>
+              </div>
+              <div class="form-group">
+                <label>Price ($) *</label>
+                <input type="number" id="mealPrice" step="0.01" min="0" required placeholder="9.99"/>
+              </div>
+              <div class="form-group">
+                <label>Emoji (if no image)</label>
+                <input type="text" id="mealEmoji" placeholder="🌮" maxlength="4"/>
+              </div>
+              <div class="form-group full">
+                <label>Description *</label>
+                <textarea id="mealDesc" rows="3" required placeholder="Describe the meal..."></textarea>
+              </div>
+              <div class="form-group full">
+                <label>Image (optional)</label>
+                <div class="img-upload" id="imgUpload" onclick="document.getElementById('mealImg').click()">
+                  <div class="placeholder" id="imgPlaceholder">
+                    <span class="icon">📷</span>
+                    Click to upload image (JPG, PNG)
+                  </div>
+                </div>
+                <input type="file" id="mealImg" accept="image/*" style="display:none" onchange="handleImage(event)"/>
+              </div>
+            </div>
+            <div style="display:flex;gap:.5rem;margin-top:1rem">
+              <button type="submit" class="btn btn-primary">💾 Save Meal</button>
+              <button type="button" class="btn btn-secondary" onclick="resetForm()">Cancel</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <!-- MENU LIST -->
+    <section id="panel-menu" style="display:none">
+      <div class="panel">
+        <div class="panel-header">
+          <h2>All Menu Items</h2>
+          <button class="btn btn-primary btn-sm" onclick="showPanel('add',document.querySelector('nav a:nth-child(3)'))">+ Add New</button>
+        </div>
+        <div class="panel-body">
+          <div class="search-bar">
+            <input type="text" id="searchInput" placeholder="🔍 Search meals..." oninput="renderMenuTable()"/>
+            <select id="filterCat" onchange="renderMenuTable()" style="padding:.7rem;border:1px solid var(--border);border-radius:8px"></select>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Image</th><th>Name</th><th>Category</th><th>Description</th><th>Price</th><th>Actions</th></tr></thead>
+              <tbody id="menuTable"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CATEGORIES -->
+    <section id="panel-categories" style="display:none">
+      <div class="panel">
+        <div class="panel-header"><h2>Manage Categories</h2></div>
+        <div class="panel-body">
+          <div style="display:flex;gap:.5rem;margin-bottom:1rem">
+            <input type="text" id="newCat" placeholder="New category name" style="flex:1;padding:.7rem;border:1px solid var(--border);border-radius:8px"/>
+            <button class="btn btn-primary" onclick="addCategory()">+ Add</button>
+          </div>
+          <div id="catList"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============ CONFIG ============ */
+const ADMIN_PASSWORD = 'admin123'; // Change this!
+const STORAGE_KEY = 'meals';
+const CAT_KEY = 'categories';
+
+/* ============ DEFAULT DATA ============ */
+const defaultMeals = [
+  {id:1,name:"Classic Burger",desc:"Juicy beef patty with cheese, lettuce & tomato.",price:9.99,cat:"Mains",emoji:"🍔",img:""},
+  {id:2,name:"Margherita Pizza",desc:"Fresh mozzarella, basil & tomato sauce.",price:12.50,cat:"Mains",emoji:"🍕",img:""},
+  {id:3,name:"Caesar Salad",desc:"Crisp romaine, parmesan & croutons.",price:7.99,cat:"Starters",emoji:"🥗",img:""},
+  {id:4,name:"Grilled Salmon",desc:"Atlantic salmon with lemon butter sauce.",price:16.99,cat:"Mains",emoji:"🐟",img:""},
+  {id:5,name:"Chicken Wings",desc:"Spicy buffalo wings with ranch dip.",price:10.50,cat:"Starters",emoji:"🍗",img:""},
+  {id:6,name:"Pasta Carbonara",desc:"Creamy pasta with bacon & parmesan.",price:13.99,cat:"Mains",emoji:"🍝",img:""},
+  {id:7,name:"Chocolate Cake",desc:"Rich dark chocolate with ganache.",price:6.50,cat:"Desserts",emoji:"🍰",img:""},
+  {id:8,name:"Ice Cream Sundae",desc:"Vanilla ice cream with toppings.",price:5.99,cat:"Desserts",emoji:"🍨",img:""},
+  {id:9,name:"Fresh Lemonade",desc:"Hand-squeezed with mint leaves.",price:3.99,cat:"Drinks",emoji:"🍋",img:""},
+  {id:10,name:"Cappuccino",desc:"Italian-style espresso with foam.",price:4.50,cat:"Drinks",emoji:"☕",img:""},
+  {id:11,name:"Garlic Bread",desc:"Toasted with garlic butter & herbs.",price:4.99,cat:"Starters",emoji:"🥖",img:""},
+  {id:12,name:"Tiramisu",desc:"Classic Italian coffee dessert.",price:7.50,cat:"Desserts",emoji:"🍮",img:""},
+];
+const defaultCats = ['Starters','Mains','Desserts','Drinks'];
+
+/* ============ STATE ============ */
+let meals = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null') || defaultMeals;
+let categories = JSON.parse(localStorage.getItem(CAT_KEY) || 'null') || defaultCats;
+let currentImg = '';
+
+// Save defaults if first load
+if(!localStorage.getItem(STORAGE_KEY)) localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultMeals));
+if(!localStorage.getItem(CAT_KEY)) localStorage.setItem(CAT_KEY, JSON.stringify(defaultCats));
+
+/* ============ AUTH ============ */
+function doLogin(){
+  const pass = document.getElementById('loginPass').value;
+  if(pass === ADMIN_PASSWORD){
+    sessionStorage.setItem('adminAuth','1');
+    showApp();
+  } else {
+    document.getElementById('loginError').style.display='block';
+  }
+}
+function logout(){
+  sessionStorage.removeItem('adminAuth');
+  location.reload();
+}
+function showApp(){
+  document.getElementById('loginWrap').style.display='none';
+  document.getElementById('app').style.display='block';
+  refreshAll();
+}
+if(sessionStorage.getItem('adminAuth')==='1') showApp();
+
+/* ============ NAVIGATION ============ */
+function showPanel(name, link){
+  document.querySelectorAll('[id^="panel-"]').forEach(p=>p.style.display='none');
+  document.getElementById('panel-'+name).style.display='block';
+  document.querySelectorAll('.sidebar nav a').forEach(a=>a.classList.remove('active'));
+  if(link) link.classList.add('active');
+  const titles = {dashboard:'Dashboard', orders:'Order Tracking', add:'Add / Edit Meal', menu:'Menu Items', categories:'Categories'};
+  document.getElementById('pageTitle').textContent = titles[name];
+  if(name==='dashboard') renderDashboard();
+  if(name==='menu') renderMenuTable();
+  if(name==='categories') renderCategories();
+  if(name==='add') populateCatSelect();
+  if(name==='orders') renderOrders();
+}
+
+/* ============ ORDERS MANAGEMENT ============ */
+function renderOrders(){
+  let orders = JSON.parse(localStorage.getItem('orders') || '[]');
+  const lastOrder = JSON.parse(localStorage.getItem('lastOrder') || 'null');
+  
+  // Auto-migrate lastOrder to orders array if it's not there
+  if (lastOrder && !orders.find(o => o.id === lastOrder.id)) {
+      orders.push(lastOrder);
+      localStorage.setItem('orders', JSON.stringify(orders));
+  }
+  
+  orders.sort((a, b) => new Date(b.time) - new Date(a.time));
+  
+  const tbody = document.getElementById('ordersTable');
+  if (orders.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--gray);padding:2rem">No orders yet</td></tr>';
+      return;
+  }
+  
+  tbody.innerHTML = orders.map(o => {
+      const itemsSummary = o.items.map(i => `${i.name} x${i.qty}`).join(', ');
+      const status = o.status || 'Order Received';
+      const statusColor = getStatusColor(status);
+      
+      return `
+      <tr>
+          <td><strong style="font-family:monospace; color:var(--primary); font-size:1.05rem;">${o.id}</strong></td>
+          <td>
+              <div style="font-weight:600;">${o.customer.name}</div>
+              <div style="font-size:.8rem; color:var(--gray);">${o.customer.phone}</div>
+          </td>
+          <td style="max-width:200px; font-size:.85rem; color:var(--gray); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${itemsSummary}">${itemsSummary}</td>
+          <td><span class="badge" style="text-transform:capitalize;">${o.orderType || 'pickup'}</span></td>
+          <td><strong>$${o.total.toFixed(2)}</strong></td>
+          <td>
+              <select onchange="updateOrderStatus('${o.id}', this.value)" class="status-select" style="background:${statusColor};">
+                  <option value="Order Received" ${status==='Order Received'?'selected':''}>📝 Received</option>
+                  <option value="Preparing" ${status==='Preparing'?'selected':''}>👨‍🍳 Preparing</option>
+                  <option value="Out for Delivery" ${status==='Out for Delivery'?'selected':''} ${o.orderType==='pickup'?'disabled':''}>🚚 Out for Delivery</option>
+                  <option value="Ready for Pickup" ${status==='Ready for Pickup'?'selected':''} ${o.orderType==='delivery'?'disabled':''}>🏃 Ready for Pickup</option>
+                  <option value="Delivered" ${status==='Delivered'?'selected':''}>✅ Delivered</option>
+              </select>
+          </td>
+          <td>
+              <button class="btn btn-danger btn-sm" onclick="deleteOrder('${o.id}')">🗑️</button>
+          </td>
+      </tr>
+      `;
+  }).join('');
+}
+
+function getStatusColor(status) {
+    switch(status) {
+        case 'Order Received': return '#6b6b6b';
+        case 'Preparing': return '#ed6c02';
+        case 'Out for Delivery': return '#1976d2';
+        case 'Ready for Pickup': return '#1976d2';
+        case 'Delivered': return '#2e7d32';
+        default: return '#6b6b6b';
+    }
+}
+
+function updateOrderStatus(orderId, newStatus) {
+    let orders = JSON.parse(localStorage.getItem('orders') || '[]');
+    const order = orders.find(o => o.id === orderId);
+    if (order) {
+        order.status = newStatus;
+        order.lastUpdated = new Date().toISOString();
+        localStorage.setItem('orders', JSON.stringify(orders));
+        
+        // Sync back to lastOrder if it's the most recent one so customer app sees it
+        const lastOrder = JSON.parse(localStorage.getItem('lastOrder') || 'null');
+        if (lastOrder && lastOrder.id === orderId) {
+            lastOrder.status = newStatus;
+            lastOrder.lastUpdated = new Date().toISOString();
+            localStorage.setItem('lastOrder', JSON.stringify(lastOrder));
+        }
+        
+        toast(`Order ${orderId} updated to ${newStatus}`);
+        window.dispatchEvent(new Event('storage'));
+    }
+}
+
+function deleteOrder(orderId) {
+    if (!confirm('Delete this order record?')) return;
+    let orders = JSON.parse(localStorage.getItem('orders') || '[]');
+    orders = orders.filter(o => o.id !== orderId);
+    localStorage.setItem('orders', JSON.stringify(orders));
+    
+    const lastOrder = JSON.parse(localStorage.getItem('lastOrder') || 'null');
+    if (lastOrder && lastOrder.id === orderId) {
+        localStorage.removeItem('lastOrder');
+    }
+    
+    renderOrders();
+    toast('Order deleted');
+}
+
+/* ============ DASHBOARD ============ */
+function renderDashboard(){
+  document.getElementById('statTotal').textContent = meals.length;
+  document.getElementById('statCats').textContent = categories.length;
+  const avg = meals.length ? (meals.reduce((s,m)=>s+m.price,0)/meals.length) : 0;
+  document.getElementById('statAvg').textContent = '$'+avg.toFixed(2);
+  const max = meals.length ? Math.max(...meals.map(m=>m.price)) : 0;
+  document.getElementById('statMax').textContent = '$'+max.toFixed(2);
+  const recent = [...meals].slice(-5).reverse();
+  document.getElementById('recentTable').innerHTML = recent.map(m=>`
+    <tr>
+      <td><div class="item-img">${m.img?`<img src="${m.img}" style="width:100%;height:100%;object-fit:cover;border-radius:8px"/>`:m.emoji}</div></td>
+      <td><strong>${m.name}</strong></td>
+      <td><span class="badge">${m.cat}</span></td>
+      <td>$${m.price.toFixed(2)}</td>
+    </tr>`).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--gray)">No items yet</td></tr>';
+}
+
+/* ============ FORM ============ */
+function populateCatSelect(){
+  const sel = document.getElementById('mealCat');
+  sel.innerHTML = '<option value="">Select category</option>' + categories.map(c=>`<option value="${c}">${c}</option>`).join('');
+}
+function handleImage(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  if(file.size > 2*1024*1024){ toast('Image too large (max 2MB)','error'); return; }
+  const reader = new FileReader();
+  reader.onload = ev => {
+    currentImg = ev.target.result;
+    document.getElementById('imgPlaceholder').innerHTML = `<img src="${currentImg}"/><p style="margin-top:.5rem;font-size:.8rem">Click to change</p>`;
+  };
+  reader.readAsDataURL(file);
+}
+function saveMeal(e){
+  e.preventDefault();
+  const id = document.getElementById('mealId').value;
+  const data = {
+    name: document.getElementById('mealName').value.trim(),
+    cat: document.getElementById('mealCat').value,
+    price: parseFloat(document.getElementById('mealPrice').value),
+    desc: document.getElementById('mealDesc').value.trim(),
+    emoji: document.getElementById('mealEmoji').value.trim() || '🍽️',
+    img: currentImg
+  };
+  if(id){
+    const idx = meals.findIndex(m=>m.id==id);
+    meals[idx] = {...meals[idx], ...data};
+    toast('Meal updated!');
+  } else {
+    data.id = Date.now();
+    meals.push(data);
+    toast('Meal added!');
+  }
+  persist();
+  resetForm();
+  showPanel('menu', document.querySelector('nav a:nth-child(4)'));
+}
+function resetForm(){
+  document.getElementById('mealForm').reset();
+  document.getElementById('mealId').value='';
+  currentImg='';
+  document.getElementById('imgPlaceholder').innerHTML = '<span class="icon">📷</span>Click to upload image (JPG, PNG)';
+  document.getElementById('formTitle').textContent='Add New Meal';
+}
+function editMeal(id){
+  const m = meals.find(x=>x.id===id);
+  if(!m) return;
+  showPanel('add', document.querySelector('nav a:nth-child(3)'));
+  document.getElementById('formTitle').textContent='Edit Meal';
+  document.getElementById('mealId').value = m.id;
+  document.getElementById('mealName').value = m.name;
+  document.getElementById('mealCat').value = m.cat;
+  document.getElementById('mealPrice').value = m.price;
+  document.getElementById('mealDesc').value = m.desc;
+  document.getElementById('mealEmoji').value = m.emoji || '';
+  currentImg = m.img || '';
+  if(currentImg){
+    document.getElementById('imgPlaceholder').innerHTML = `<img src="${currentImg}"/><p style="margin-top:.5rem;font-size:.8rem">Click to change</p>`;
+  }
+}
+function deleteMeal(id){
+  if(!confirm('Delete this meal?')) return;
+  meals = meals.filter(m=>m.id!==id);
+  persist();
+  renderMenuTable();
+  toast('Meal deleted');
+}
+
+/* ============ MENU TABLE ============ */
+function renderMenuTable(){
+  const search = document.getElementById('searchInput').value.toLowerCase();
+  const filter = document.getElementById('filterCat').value;
+  const fSel = document.getElementById('filterCat');
+  const cur = fSel.value;
+  fSel.innerHTML = '<option value="">All Categories</option>' + categories.map(c=>`<option value="${c}">${c}</option>`).join('');
+  fSel.value = cur;
+
+  let list = meals.filter(m=>{
+    const matchSearch = !search || m.name.toLowerCase().includes(search) || m.desc.toLowerCase().includes(search);
+    const matchCat = !filter || m.cat===filter;
+    return matchSearch && matchCat;
+  });
+  document.getElementById('menuTable').innerHTML = list.map(m=>`
+    <tr>
+      <td><div class="item-img">${m.img?`<img src="${m.img}" style="width:100%;height:100%;object-fit:cover;border-radius:8px"/>`:m.emoji}</div></td>
+      <td><strong>${m.name}</strong></td>
+      <td><span class="badge">${m.cat}</span></td>
+      <td style="max-width:200px;color:var(--gray);font-size:.9rem">${m.desc}</td>
+      <td><strong>$${m.price.toFixed(2)}</strong></td>
+      <td><div class="actions">
+        <button class="btn btn-secondary btn-sm" onclick="editMeal(${m.id})">✏️ Edit</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteMeal(${m.id})">🗑️ Delete</button>
+      </div></td>
+    </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--gray);padding:2rem">No meals found</td></tr>';
+}
+
+/* ============ CATEGORIES ============ */
+function renderCategories(){
+  document.getElementById('catList').innerHTML = categories.map(c=>{
+    const count = meals.filter(m=>m.cat===c).length;
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:.8rem;border:1px solid var(--border);border-radius:8px;margin-bottom:.5rem">
+      <div><strong>${c}</strong> <span class="badge">${count} items</span></div>
+      <button class="btn btn-danger btn-sm" onclick="deleteCategory('${c}')">Delete</button>
+    </div>`;
+  }).join('');
+}
+function addCategory(){
+  const input = document.getElementById('newCat');
+  const name = input.value.trim();
+  if(!name) return;
+  if(categories.includes(name)){ toast('Category exists','error'); return; }
+  categories.push(name);
+  persist();
+  input.value='';
+  renderCategories();
+  toast('Category added!');
+}
+function deleteCategory(name){
+  const count = meals.filter(m=>m.cat===name).length;
+  if(count>0){
+    if(!confirm(`"${name}" has ${count} meal(s). They will become uncategorized. Continue?`)) return;
+  } else {
+    if(!confirm(`Delete category "${name}"?`)) return;
+  }
+  categories = categories.filter(c=>c!==name);
+  persist();
+  renderCategories();
+  toast('Category deleted');
+}
+
+/* ============ UTILS ============ */
+function persist(){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(meals));
+  localStorage.setItem(CAT_KEY, JSON.stringify(categories));
+  window.dispatchEvent(new Event('storage'));
+}
+function toast(msg, type='success'){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (type==='error'?' error':'');
+  setTimeout(()=>t.classList.remove('show'), 2500);
+}
+function refreshAll(){
+  renderDashboard();
+  populateCatSelect();
+}
+</script>
+</body>
+</html>
