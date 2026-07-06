@@ -292,34 +292,29 @@
 <script>
 /* ============ CONFIG ============ */
 const ADMIN_PASSWORD = 'admin123'; // Change this!
-const STORAGE_KEY = 'meals';
-const CAT_KEY = 'categories';
-
-/* ============ DEFAULT DATA ============ */
-const defaultMeals = [
-  {id:1,name:"Classic Burger",desc:"Juicy beef patty with cheese, lettuce & tomato.",price:9.99,cat:"Mains",emoji:"🍔",img:""},
-  {id:2,name:"Margherita Pizza",desc:"Fresh mozzarella, basil & tomato sauce.",price:12.50,cat:"Mains",emoji:"🍕",img:""},
-  {id:3,name:"Caesar Salad",desc:"Crisp romaine, parmesan & croutons.",price:7.99,cat:"Starters",emoji:"🥗",img:""},
-  {id:4,name:"Grilled Salmon",desc:"Atlantic salmon with lemon butter sauce.",price:16.99,cat:"Mains",emoji:"🐟",img:""},
-  {id:5,name:"Chicken Wings",desc:"Spicy buffalo wings with ranch dip.",price:10.50,cat:"Starters",emoji:"🍗",img:""},
-  {id:6,name:"Pasta Carbonara",desc:"Creamy pasta with bacon & parmesan.",price:13.99,cat:"Mains",emoji:"🍝",img:""},
-  {id:7,name:"Chocolate Cake",desc:"Rich dark chocolate with ganache.",price:6.50,cat:"Desserts",emoji:"🍰",img:""},
-  {id:8,name:"Ice Cream Sundae",desc:"Vanilla ice cream with toppings.",price:5.99,cat:"Desserts",emoji:"🍨",img:""},
-  {id:9,name:"Fresh Lemonade",desc:"Hand-squeezed with mint leaves.",price:3.99,cat:"Drinks",emoji:"🍋",img:""},
-  {id:10,name:"Cappuccino",desc:"Italian-style espresso with foam.",price:4.50,cat:"Drinks",emoji:"☕",img:""},
-  {id:11,name:"Garlic Bread",desc:"Toasted with garlic butter & herbs.",price:4.99,cat:"Starters",emoji:"🥖",img:""},
-  {id:12,name:"Tiramisu",desc:"Classic Italian coffee dessert.",price:7.50,cat:"Desserts",emoji:"🍮",img:""},
-];
-const defaultCats = ['Starters','Mains','Desserts','Drinks'];
 
 /* ============ STATE ============ */
-let meals = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null') || defaultMeals;
-let categories = JSON.parse(localStorage.getItem(CAT_KEY) || 'null') || defaultCats;
+let meals = [];
+let categories = [];
 let currentImg = '';
 
-// Save defaults if first load
-if(!localStorage.getItem(STORAGE_KEY)) localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultMeals));
-if(!localStorage.getItem(CAT_KEY)) localStorage.setItem(CAT_KEY, JSON.stringify(defaultCats));
+/* ============ INIT ============ */
+async function initApp() {
+    await loadMeals();
+    await loadCategories();
+    if(sessionStorage.getItem('adminAuth')==='1') showApp();
+}
+initApp();
+
+async function loadMeals() {
+    const res = await fetch('/api/meals');
+    meals = await res.json();
+}
+
+async function loadCategories() {
+    const res = await fetch('/api/categories');
+    categories = await res.json();
+}
 
 /* ============ AUTH ============ */
 function doLogin(){
@@ -340,7 +335,6 @@ function showApp(){
   document.getElementById('app').style.display='block';
   refreshAll();
 }
-if(sessionStorage.getItem('adminAuth')==='1') showApp();
 
 /* ============ NAVIGATION ============ */
 function showPanel(name, link){
@@ -358,16 +352,9 @@ function showPanel(name, link){
 }
 
 /* ============ ORDERS MANAGEMENT ============ */
-function renderOrders(){
-  let orders = JSON.parse(localStorage.getItem('orders') || '[]');
-  const lastOrder = JSON.parse(localStorage.getItem('lastOrder') || 'null');
-  
-  // Auto-migrate lastOrder to orders array if it's not there
-  if (lastOrder && !orders.find(o => o.id === lastOrder.id)) {
-      orders.push(lastOrder);
-      localStorage.setItem('orders', JSON.stringify(orders));
-  }
-  
+async function renderOrders(){
+  const res = await fetch('/api/orders');
+  let orders = await res.json();
   orders.sort((a, b) => new Date(b.time) - new Date(a.time));
   
   const tbody = document.getElementById('ordersTable');
@@ -419,38 +406,19 @@ function getStatusColor(status) {
     }
 }
 
-function updateOrderStatus(orderId, newStatus) {
-    let orders = JSON.parse(localStorage.getItem('orders') || '[]');
-    const order = orders.find(o => o.id === orderId);
-    if (order) {
-        order.status = newStatus;
-        order.lastUpdated = new Date().toISOString();
-        localStorage.setItem('orders', JSON.stringify(orders));
-        
-        // Sync back to lastOrder if it's the most recent one so customer app sees it
-        const lastOrder = JSON.parse(localStorage.getItem('lastOrder') || 'null');
-        if (lastOrder && lastOrder.id === orderId) {
-            lastOrder.status = newStatus;
-            lastOrder.lastUpdated = new Date().toISOString();
-            localStorage.setItem('lastOrder', JSON.stringify(lastOrder));
-        }
-        
-        toast(`Order ${orderId} updated to ${newStatus}`);
-        window.dispatchEvent(new Event('storage'));
-    }
+async function updateOrderStatus(orderId, newStatus) {
+    await fetch(`/api/orders/${orderId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus })
+    });
+    toast(`Order ${orderId} updated to ${newStatus}`);
+    renderOrders(); // Refresh the table
 }
 
-function deleteOrder(orderId) {
+async function deleteOrder(orderId) {
     if (!confirm('Delete this order record?')) return;
-    let orders = JSON.parse(localStorage.getItem('orders') || '[]');
-    orders = orders.filter(o => o.id !== orderId);
-    localStorage.setItem('orders', JSON.stringify(orders));
-    
-    const lastOrder = JSON.parse(localStorage.getItem('lastOrder') || 'null');
-    if (lastOrder && lastOrder.id === orderId) {
-        localStorage.removeItem('lastOrder');
-    }
-    
+    await fetch(`/api/orders/${orderId}`, { method: 'DELETE' });
     renderOrders();
     toast('Order deleted');
 }
@@ -489,7 +457,8 @@ function handleImage(e){
   };
   reader.readAsDataURL(file);
 }
-function saveMeal(e){
+
+async function saveMeal(e){
   e.preventDefault();
   const id = document.getElementById('mealId').value;
   const data = {
@@ -500,19 +469,28 @@ function saveMeal(e){
     emoji: document.getElementById('mealEmoji').value.trim() || '🍽️',
     img: currentImg
   };
+
   if(id){
-    const idx = meals.findIndex(m=>m.id==id);
-    meals[idx] = {...meals[idx], ...data};
+    await fetch(`/api/meals/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    });
     toast('Meal updated!');
   } else {
-    data.id = Date.now();
-    meals.push(data);
+    await fetch('/api/meals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    });
     toast('Meal added!');
   }
-  persist();
+  
+  await loadMeals(); // Refresh local data from backend
   resetForm();
   showPanel('menu', document.querySelector('nav a:nth-child(4)'));
 }
+
 function resetForm(){
   document.getElementById('mealForm').reset();
   document.getElementById('mealId').value='';
@@ -520,6 +498,7 @@ function resetForm(){
   document.getElementById('imgPlaceholder').innerHTML = '<span class="icon">📷</span>Click to upload image (JPG, PNG)';
   document.getElementById('formTitle').textContent='Add New Meal';
 }
+
 function editMeal(id){
   const m = meals.find(x=>x.id===id);
   if(!m) return;
@@ -536,10 +515,11 @@ function editMeal(id){
     document.getElementById('imgPlaceholder').innerHTML = `<img src="${currentImg}"/><p style="margin-top:.5rem;font-size:.8rem">Click to change</p>`;
   }
 }
-function deleteMeal(id){
+
+async function deleteMeal(id){
   if(!confirm('Delete this meal?')) return;
-  meals = meals.filter(m=>m.id!==id);
-  persist();
+  await fetch(`/api/meals/${id}`, { method: 'DELETE' });
+  await loadMeals();
   renderMenuTable();
   toast('Meal deleted');
 }
@@ -578,46 +558,51 @@ function renderCategories(){
     const count = meals.filter(m=>m.cat===c).length;
     return `<div style="display:flex;justify-content:space-between;align-items:center;padding:.8rem;border:1px solid var(--border);border-radius:8px;margin-bottom:.5rem">
       <div><strong>${c}</strong> <span class="badge">${count} items</span></div>
-      <button class="btn btn-danger btn-sm" onclick="deleteCategory('${c}')">Delete</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteCategory(this.dataset.name)" data-name="${c}">Delete</button>
     </div>`;
   }).join('');
 }
-function addCategory(){
+
+async function addCategory(){
   const input = document.getElementById('newCat');
   const name = input.value.trim();
   if(!name) return;
   if(categories.includes(name)){ toast('Category exists','error'); return; }
-  categories.push(name);
-  persist();
+  
+  await fetch('/api/categories', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name })
+  });
+  
+  await loadCategories();
   input.value='';
   renderCategories();
   toast('Category added!');
 }
-function deleteCategory(name){
+
+async function deleteCategory(name){
   const count = meals.filter(m=>m.cat===name).length;
   if(count>0){
     if(!confirm(`"${name}" has ${count} meal(s). They will become uncategorized. Continue?`)) return;
   } else {
     if(!confirm(`Delete category "${name}"?`)) return;
   }
-  categories = categories.filter(c=>c!==name);
-  persist();
+  
+  await fetch(`/api/categories/${encodeURIComponent(name)}`, { method: 'DELETE' });
+  await loadCategories();
   renderCategories();
   toast('Category deleted');
 }
 
 /* ============ UTILS ============ */
-function persist(){
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(meals));
-  localStorage.setItem(CAT_KEY, JSON.stringify(categories));
-  window.dispatchEvent(new Event('storage'));
-}
 function toast(msg, type='success'){
   const t = document.getElementById('toast');
   t.textContent = msg;
   t.className = 'toast show' + (type==='error'?' error':'');
   setTimeout(()=>t.classList.remove('show'), 2500);
 }
+
 function refreshAll(){
   renderDashboard();
   populateCatSelect();
