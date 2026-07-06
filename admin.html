@@ -289,8 +289,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-/* ============ CONFIG ============ */
-const ADMIN_PASSWORD = 'admin123';
+
 
 /* ============ STATE ============ */
 let meals = [];
@@ -315,16 +314,26 @@ async function loadCategories() {
     categories = await res.json();
 }
 
-/* ============ AUTH ============ */
-function doLogin(){
+async function doLogin(){
   const pass = document.getElementById('loginPass').value;
-  if(pass === ADMIN_PASSWORD){
+  
+  // Send the password to the server to check it
+  const response = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pass })
+  });
+  
+  const data = await response.json();
+  
+  if(data.success){
     sessionStorage.setItem('adminAuth','1');
     showApp();
   } else {
     document.getElementById('loginError').style.display='block';
   }
 }
+
 function logout(){
   sessionStorage.removeItem('adminAuth');
   location.reload();

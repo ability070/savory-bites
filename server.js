@@ -1,9 +1,12 @@
+require('dotenv').config();
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 // Middleware to parse JSON (increased limit for Base64 images)
 app.use(express.json({ limit: '10mb' }));
@@ -37,6 +40,15 @@ function saveDB(data) {
 // ================= HTML ROUTES =================
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'admin.html')));
+
+// ================= SECURE LOGIN ROUTE =================
+app.post('/api/login', (req, res) => {
+    if (req.body.password === ADMIN_PASSWORD) {
+        res.json({ success: true });
+    } else {
+        res.status(401).json({ success: false, message: 'Incorrect password' });
+    }
+});
 
 // ================= MEALS API =================
 app.get('/api/meals', (req, res) => res.json(getDB().meals));
